@@ -1,8 +1,6 @@
 import pandas as pd
-import numpy as np
-import sys
-# could not manage to use a package version of refactor modules
-from preprocess import clean_dataset, transform_dataset, one_hot_dataset
+from src.data.preprocess import clean_dataset, transform_dataset, one_hot_dataset
+
 
 def predict(train, test):
 
@@ -19,7 +17,7 @@ def predict(train, test):
     answer = test.copy().loc[:, []]
     answer['NU_NOTA_MT'] = 0
 
-    missing_fields = list(set(train_set.columns) -set(test_set.columns)) +list(set(test_set.columns) -set(train_set.columns))
+    missing_fields = list(set(train_set.columns) - set(test_set.columns)) + list(set(test_set.columns) - set(train_set.columns))
 
     train_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)
     test_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)

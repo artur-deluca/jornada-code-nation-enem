@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+import src
 
 
 def transform_dataset(dataset):
@@ -69,16 +69,25 @@ def clean_dataset(dataset, columns):
     df = dataset.copy(deep=True)
 
     # We're interessed in predicting only the ones that completed the test
-    df = df[df.TP_PRESENCA_LC == 1.0]
+    df = df.loc[df.TP_PRESENCA_LC == 1.0, :]
 
     # if the dataset to clean is the training set then remove the unexisting columns in the test set
 
     key = 'NU_NOTA_MT'
+    columns = list(columns)
+
+    try:
+        columns.pop(columns.index(key))
+    except ValueError:
+        pass
+    columns.append(key)
+
     if key not in df.columns:
         df[key] = 0
     else:
         df = df.loc[df.NU_NOTA_MT != 0]
-    df = df.loc[:, list(columns)+[key]]
+
+    df = df.loc[:, list(columns)]
 
     # the fields below were judged redundant or badly distributed
     to_remove = ['CO_UF_RESIDENCIA',
@@ -104,7 +113,7 @@ def clean_dataset(dataset, columns):
 
     # drop unexpected columns with single values
     try:
-        singular_columns = df.columns[list(map(lambda x: len(df[x].unique()) == 1, list(df.columns)[:-1]))]
+        singular_columns = df.columns[list(map(lambda x: len(pd.Series(df[x]).unique()) == 1, list(df.columns)[:-1]))+[False]]
         df.drop(singular_columns, axis=1, inplace=True)
     except IndexError:
         pass
