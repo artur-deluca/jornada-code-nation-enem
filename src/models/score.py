@@ -20,6 +20,7 @@ def score(y, y_pred, mean=True):
 
 def naive_approach(dataset, predict_n=5):
     df = dataset.copy()
+    df['PREDICTION'] = ""
     for i in df.index:
         df.loc[i, 'PREDICTION'] = df.loc[i, 'PREDICTION'].join(''.join(str(x) for x in np.random.choice(['A', 'B', 'C', 'D', 'E'], size=predict_n)))
-    print('Naive approach: %.2f' % (score(df.TX_RESPOSTAS_MT.str[-predict_n:], df.PREDICTION)*100))
+    return score(df.TX_RESPOSTAS_MT.str[-predict_n:], df.PREDICTION)

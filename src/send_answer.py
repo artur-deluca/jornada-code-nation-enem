@@ -1,8 +1,10 @@
-def send_answer(answer, challenge):
-    import os
-    import requests
-    from dotenv import load_dotenv, find_dotenv
+import os
+import requests
+from dotenv import load_dotenv, find_dotenv
 
+
+def send_answer(answer, challenge):
+    '''Send answers to the code nation challenge through the corresponding URL'''
     # find .env automatically by walking up directories until it's found
     dotenv_path = find_dotenv()
 

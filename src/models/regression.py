@@ -1,55 +1,72 @@
+
 import pandas as pd
-from src.data.preprocess import clean_dataset, transform_dataset, one_hot_dataset
+import pickle as pkl
+import os
+from pathlib import Path
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import QuantileTransformer, quantile_transform
+from src.visualization.visualize import plot_dist
 
 
-def predict(train, test):
+class TransformedLinearRegression(LinearRegression):
 
-    from sklearn.linear_model import LinearRegression
-    from sklearn.preprocessing import QuantileTransformer
+    def __init__(self, n_quantiles):
+        LinearRegression.__init__(self, normalize=True)
+        self.n_quantiles = n_quantiles
 
-    test = test.copy()
-    train = train.copy()
-    columns = test.columns
+    def fit_set(self, train_X, train_Y):
+        self.qt = {
+            'X': QuantileTransformer(n_quantiles=self.n_quantiles, output_distribution='normal'),
+            'Y': QuantileTransformer(n_quantiles=self.n_quantiles, output_distribution='normal')
+        }
+        self.train_X = pd.DataFrame(self.qt['X'].fit_transform(train_X.values))
+        self.train_Y = self.qt['Y'].fit_transform(train_Y.to_frame())
+        self.shape = self.train_Y.shape
+        self.fit(self.train_X, self.train_Y.reshape((1, self.shape[0]))[0])
 
-    train_set = one_hot_dataset(transform_dataset(clean_dataset(train, columns)))
-    test_set = one_hot_dataset(transform_dataset(clean_dataset(test, columns)))
+    def predict_set(self, test_X):
+        test_X = pd.DataFrame(self.qt['X'].transform(test_X.copy().values))
+        shape = test_X.shape
+        prediction = self.predict(test_X).reshape(shape[0], 1)
+        return self.qt['Y'].inverse_transform(prediction).reshape(1, shape[0])[0]
 
-    answer = test.copy().loc[:, []]
-    answer['NU_NOTA_MT'] = 0
+    def plot_dist(self, train_Y):
+        plot_dist(quantile_transform(train_Y.to_frame(), n_quantiles=self.n_quantiles, output_distribution='normal')[:, 0])
 
-    missing_fields = list(set(train_set.columns) - set(test_set.columns)) + list(set(test_set.columns) - set(train_set.columns))
+    def save(self):
+        path = os.path.join(Path(__file__).resolve().parents[2], 'models\\trained_models\\regression.pkl')
+        pkl.dump(self, open(path, 'wb'))
 
-    train_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)
-    test_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)
 
-    train_X = train_set.iloc[:, :-1]
-    train_Y = train_set.iloc[:, -1]
+if __name__ == '__main__':
+    path = Path(__file__).resolve().parents[2]
+    # input data
+    train = pd.read_csv(os.path.join(path, 'data/interim/train2.csv')).set_index('NU_INSCRICAO')
+    test = pd.read_csv(os.path.join(path, 'data/interim/test2.csv')).set_index('NU_INSCRICAO')
 
-    test_X = test_set.iloc[:, :-1]
-    test_Y = test_set.iloc[:, -1]
+    train_X = train.iloc[:, :-1]
+    train_Y = train.iloc[:, -1]
+    test_X = test.iloc[:, :-1]
 
-    n_quantiles = 1500
+    # predict values for the test set
+    # tries to open the pickle file where the trained model is saved
+    try:
+        with open(os.path.join(path, 'models/trained_models/regression.pkl'), "rb") as f:
+            model = pkl.load(f)
 
-    qt = {
-        'X': QuantileTransformer(n_quantiles=n_quantiles, output_distribution='normal'),
-        'Y': QuantileTransformer(n_quantiles=n_quantiles, output_distribution='normal')
-    }
-
-    qt_train_X = pd.DataFrame(qt['X'].fit_transform(train_X.values))
-    qt_Y = qt['Y'].fit_transform(train_Y.to_frame())
-    qt_shape = qt_Y.shape
-
-    model_qt = LinearRegression(normalize=True)
-    model_qt.fit(qt_train_X, qt_Y.reshape((1,qt_Y.shape[0]))[0])
-    Y_pred = qt['Y'].inverse_transform(model_qt.predict(qt_train_X).reshape(qt_shape)).reshape(1,qt_shape[0])[0]
-
-    # test-set
-
-    qt_test_X = pd.DataFrame(qt['X'].transform(test_X.values))
-    prediction = qt['Y'].inverse_transform(model_qt.predict(qt_test_X).reshape((test_X.shape[0],1))).reshape(1, test_X.shape[0])[0]
+    # if file is not found it creates and saves a model from scratch
+    except FileNotFoundError:
+        model = TransformedLinearRegression(1500)
+        model.fit_set(train_X, train_Y)
+        model.save()
 
     # send answers
-    answer_qt = answer.copy()
-    answer_qt.loc[test_X.index, 'NU_NOTA_MT'] = prediction
+    prediction = model.predict_set(test_X)
+    answer = test.copy().loc[:, []]
+    answer['NU_NOTA_MT'] = 0
+    answer.loc[test_X.index, 'NU_NOTA_MT'] = prediction
+    answer.to_csv(os.path.join(path, 'models/prediction/regression/test2.csv'))
 
-    return answer_qt
+    # Mean absolute percentage error (MAPE)
+    mape = lambda y_true, y_pred: (abs(y_true-y_pred)/y_true).mean()
+    print('MAPE: %.4f'%mape(y_true=train_Y, y_pred=model.predict_set(train_X)))

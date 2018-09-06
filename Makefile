@@ -8,7 +8,7 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
 PROFILE = default
 PROJECT_NAME = jornada-code-nation-enem
-PYTHON_INTERPRETER = python3
+PYTHON_INTERPRETER = python
 
 ifeq (,$(shell which conda))
 HAS_CONDA=False
@@ -19,6 +19,8 @@ endif
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
+## build Data
+
 
 ## Install Python Dependencies
 requirements: test_environment
@@ -28,6 +30,10 @@ requirements: test_environment
 ## Make Dataset
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py
+
+features:
+	$(PYTHON_INTERPRETER) src/features/build_data_challenge_2.py
+	$(PYTHON_INTERPRETER) src/features/build_data_challenge_3.py
 
 ## Delete all compiled Python files
 clean:
