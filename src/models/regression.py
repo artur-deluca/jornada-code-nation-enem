@@ -9,12 +9,30 @@ from src.visualization.visualize import plot_dist
 
 
 class TransformedLinearRegression(LinearRegression):
+    '''
+    Linear Regression model. Methods and attributes inherited from sklearn's LinearRegression class.
+    Applies a Quantile transformation to the dataset to increase the math grade prediction accuracy
 
-    def __init__(self, n_quantiles):
+    Parameters
+    ----------
+    n_quantiles: int, default 1500
+        Number of quantiles to divide the math grades' spectrum
+    '''
+    def __init__(self, n_quantiles=1500):
         LinearRegression.__init__(self, normalize=True)
         self.n_quantiles = n_quantiles
 
     def fit_set(self, train_X, train_Y):
+        '''
+        Transform data and create a model to predict its behavior.
+
+        Parameters
+        ----------
+        train_X: pandas DataFrame
+            data used to train the model
+        train_Y: pandas DataFrame
+            data used to adjust the predictions of the model
+        '''
         self.qt = {
             'X': QuantileTransformer(n_quantiles=self.n_quantiles, output_distribution='normal'),
             'Y': QuantileTransformer(n_quantiles=self.n_quantiles, output_distribution='normal')
@@ -25,24 +43,46 @@ class TransformedLinearRegression(LinearRegression):
         self.fit(self.train_X, self.train_Y.reshape((1, self.shape[0]))[0])
 
     def predict_set(self, test_X):
+        '''
+        Transform data and create a model to predict its behavior.
+
+        Parameters
+        ----------
+        test_X: pandas DataFrame
+            Data used to predict the results. It must have the same format as the train dataset
+
+        returns:
+            numpy array with the corresponding prediction
+        '''
         test_X = pd.DataFrame(self.qt['X'].transform(test_X.copy().values))
         shape = test_X.shape
         prediction = self.predict(test_X).reshape(shape[0], 1)
         return self.qt['Y'].inverse_transform(prediction).reshape(1, shape[0])[0]
 
     def plot_dist(self, train_Y):
+        '''
+        Plot data distribution with the quantile transformation
+        Parameters
+        ----------
+        train_Y: pandas DataFrame
+            Collection of values to be transformed an analyzed
+        '''
         plot_dist(quantile_transform(train_Y.to_frame(), n_quantiles=self.n_quantiles, output_distribution='normal')[:, 0])
 
     def save(self):
+        '''
+        Store model as a pickle
+        '''
         path = os.path.join(Path(__file__).resolve().parents[2], 'models\\trained_models\\regression.pkl')
         pkl.dump(self, open(path, 'wb'))
 
 
 if __name__ == '__main__':
+    print('Linear Regression model')
     path = Path(__file__).resolve().parents[2]
     # input data
-    train = pd.read_csv(os.path.join(path, 'data/interim/train2.csv')).set_index('NU_INSCRICAO')
-    test = pd.read_csv(os.path.join(path, 'data/interim/test2.csv')).set_index('NU_INSCRICAO')
+    train = pd.read_csv(os.path.join(path, 'data/processed/train2.csv')).set_index('NU_INSCRICAO')
+    test = pd.read_csv(os.path.join(path, 'data/processed/test2.csv')).set_index('NU_INSCRICAO')
 
     train_X = train.iloc[:, :-1]
     train_Y = train.iloc[:, -1]
@@ -65,8 +105,10 @@ if __name__ == '__main__':
     answer = test.copy().loc[:, []]
     answer['NU_NOTA_MT'] = 0
     answer.loc[test_X.index, 'NU_NOTA_MT'] = prediction
-    answer.to_csv(os.path.join(path, 'models/prediction/regression/test2.csv'))
+    export = os.path.join(path, 'models/prediction/regression/test2.csv')
+    answer.to_csv(export)
 
     # Mean absolute percentage error (MAPE)
     mape = lambda y_true, y_pred: (abs(y_true-y_pred)/y_true).mean()
     print('MAPE: %.4f'%mape(y_true=train_Y, y_pred=model.predict_set(train_X)))
+    print('Test file results stored at: {}\n'.format(export))

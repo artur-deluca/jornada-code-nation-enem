@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from src.features.build_features import estimate_math, create_groups, build_quartiles
+from src.features.build_features import estimate_math, create_groups, build_quantiles
 
 if __name__ == '__main__':
     data = os.path.join(Path(__file__).resolve().parents[2], "data")
@@ -22,10 +22,12 @@ if __name__ == '__main__':
     train = train.loc[train.NU_NOTA_MT != 0, :]
 
     # reposition the training set
-    train = train.copy()[list(test.columns)+['TX_GABARITO_MT']]
+    train = train.copy()[list(test.columns)]
+    answer = train.pop('TX_RESPOSTAS_MT')
+    train['TX_RESPOSTAS_MT'] = answer
 
-    # separte the datasets in quartiles based on the math grade
-    train['MT_QT'], test['MT_QT'] = build_quartiles(train, test)
+    # separte the datasets in quantiles based on the math grade
+    train['MT_QT'], test['MT_QT'] = build_quantiles(train, test)
 
     # separte the datasets in groups using k_means and the math answers
     train['group'], test['group'] = create_groups(train, test)
@@ -34,6 +36,6 @@ if __name__ == '__main__':
 
     train, validation = train_test_split(train, train_size=0.8, random_state=42)
 
-    train.to_csv(os.path.join(data, 'interim/train3.csv'))
-    validation.to_csv(os.path.join(data, 'interim/validation3.csv'))
-    test.to_csv(os.path.join(data, 'interim/test3.csv'))
+    train.to_csv(os.path.join(data, 'processed/train3.csv'))
+    validation.to_csv(os.path.join(data, 'processed/validation3.csv'))
+    test.to_csv(os.path.join(data, 'processed/test3.csv'))

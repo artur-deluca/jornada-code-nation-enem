@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 from pathlib import Path
-from src.features.preprocess import clean_dataset, transform_dataset, one_hot_dataset
+from src.features.build_features import transform_dataset, one_hot_dataset
+from src.data.clean import clean_dataset
 
 if __name__ == '__main__':
     data = os.path.join(Path(__file__).resolve().parents[2], "data")
@@ -17,5 +18,5 @@ if __name__ == '__main__':
     train_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)
     test_set.drop(missing_fields, axis=1, errors='ignore', inplace=True)
 
-    train_set.to_csv(os.path.join(data, 'interim/train2.csv'))
-    test_set.to_csv(os.path.join(data, 'interim/test2.csv'))
+    train_set.to_csv(os.path.join(data, 'processed/train2.csv'))
+    test_set.to_csv(os.path.join(data, 'processed/test2.csv'))

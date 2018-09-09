@@ -1,6 +1,16 @@
 import pandas as pd
 
 def clean_dataset(dataset, columns):
+    '''
+    Remove all the unnecessary fields and values in the dataset
+
+    Parameters:
+    -----------
+    dataset: pandas DataFrame
+        Dataset to perform the cleaning
+    columns: list
+        columns to keep in the DataFrame
+    '''
 
     df = dataset.copy(deep=True)
 

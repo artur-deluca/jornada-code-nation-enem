@@ -27,9 +27,14 @@ requirements: test_environment
 	pip install -U pip setuptools wheel
 	pip install -r requirements.txt
 
+# I did not manage to create a make data because the files are not that big therefore they're stored in github
 ## Make Dataset
-data: requirements
-	$(PYTHON_INTERPRETER) src/data/make_dataset.py
+#data: requirements
+#	$(PYTHON_INTERPRETER) src/data/make_dataset.py
+
+run_models:
+	$(PYTHON_INTERPRETER) src/models/regression.py
+	$(PYTHON_INTERPRETER) src/models/markov.py
 
 features:
 	$(PYTHON_INTERPRETER) src/features/build_data_challenge_2.py
@@ -43,22 +48,6 @@ clean:
 ## Lint using flake8
 lint:
 	flake8 src
-
-## Upload Data to S3
-sync_data_to_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET)/data/
-else
-	aws s3 sync data/ s3://$(BUCKET)/data/ --profile $(PROFILE)
-endif
-
-## Download Data from S3
-sync_data_from_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET)/data/ data/
-else
-	aws s3 sync s3://$(BUCKET)/data/ data/ --profile $(PROFILE)
-endif
 
 ## Set up python interpreter environment
 create_environment:
