@@ -3,6 +3,14 @@ jornada-code-nation-enem
 
 My solutions to the Code:Nation Challenge based on an ENEM dataset
 
+## How to use
+ ```
+make create_environment
+activate virtual environment (jornada-code-nation-enem)
+make features
+make chal_2
+```
+
 Project Organization
 ------------
 
@@ -50,8 +58,3 @@ Project Organization
     │       └── visualize.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.testrun.org
-
-
---------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
