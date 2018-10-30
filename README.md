@@ -3,6 +3,15 @@ jornada-code-nation-enem
 
 My solutions to the Code:Nation Challenge based on an ENEM dataset
 
+## How to use
+
+```
+make create_environment
+activate virtual environment (jornada-code-nation-enem)
+make features
+make run_chal_2
+```
+
 Project Organization
 ------------
 
@@ -53,5 +62,3 @@ Project Organization
 
 
 --------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
