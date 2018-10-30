@@ -9,7 +9,7 @@ My solutions to the Code:Nation Challenge based on an ENEM dataset
 make create_environment
 activate virtual environment (jornada-code-nation-enem)
 make features
-make run_chal_2
+make chal_2
 ```
 
 Project Organization
