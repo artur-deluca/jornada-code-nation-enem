@@ -4,11 +4,12 @@
 # external requirements
 pip-chill==0.1.8
 python-dotenv>=0.5.1
-scikit-learn==0.19.1
+scikit-learn==0.20.0
 seaborn==0.9.0
 statsmodels==0.9.0
 jupyter
 click
+cloudpickle
 Sphinx
 coverage
 awscli

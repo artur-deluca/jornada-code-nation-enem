@@ -4,7 +4,15 @@ from src.models.regression import TransformedLinearRegression
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 
+
 def transform_dataset(dataset):
+    '''
+    Combines different fields and values in the dataset to create new features
+
+    Parameters
+    ----------
+    dataset: pandas DataFrame
+    '''
 
     df = dataset.copy(deep=True)
 
@@ -67,7 +75,13 @@ def transform_dataset(dataset):
 
 
 def one_hot_dataset(dataset):
+    '''
+    Transforms dataset feature format in one hot encoding
 
+    Parameters
+    ----------
+    dataset: pandas DataFrame
+    '''
     # select only categorical columns
     one_hot_columns = list(dataset.columns[~dataset.columns.str.startswith('NU')])
 
@@ -83,7 +97,16 @@ def one_hot_dataset(dataset):
 
 
 def estimate_math(train, test):
+    '''
+    Estimate the math grade using the quantile model
 
+    Parameters
+    ----------
+    train: pandas DataFrame
+        Dataset containing the math grades in the 'NU_NOTA_MT' field
+    test: pandas DataFrame
+        Dataset to estimate the math grades
+    '''
     test = test.copy()
     train = train.copy()
     columns = test.columns
@@ -105,8 +128,8 @@ def estimate_math(train, test):
 
     # test-set
     model = TransformedLinearRegression(1500)
-    model.fit_set(train_X, train_Y)
-    prediction = model.predict_set(test_X)
+    model.fit(train_X, train_Y)
+    prediction = model.predict(test_X)
 
     # send answers
     answer_qt = answer.copy()
@@ -114,16 +137,40 @@ def estimate_math(train, test):
 
     return answer_qt
 
-def build_quartiles(train, test, quartiles=4):
-    merged_grades = pd.qcut(pd.concat([train.NU_NOTA_MT, test.NU_NOTA_MT]), quartiles, labels=False)
+
+def build_quantiles(train, test, quantiles=4):
+    '''
+    Generate the math grande quantiles of the dataset
+
+    Parameters
+    ----------
+    train: pandas DataFrame
+        Dataset containing the math grades in the 'NU_NOTA_MT' field
+    test: pandas DataFrame
+        Dataset that also contains the math grades
+    quantiles: int, default 4
+        Number of quantiles to segment datasets
+    '''
+    merged_grades = pd.qcut(pd.concat([train.NU_NOTA_MT, test.NU_NOTA_MT]), quantiles, labels=False)
     return merged_grades.loc[train.index].values, merged_grades.loc[test.index].values
 
-def create_groups(train, test):
 
+def create_groups(train, test):
+    '''
+    Generate clusters based on KMeans algorithm
+
+    Parameters
+    ----------
+    train: pandas DataFrame
+        Dataset containing the math answers in the 'TX_RESPOSTAS_MT' field
+    test: pandas DataFrame
+        Dataset also containing the math answers in the 'TX_RESPOSTAS_MT' field
+    '''
     train = train.copy()
     test = test.copy()
 
-    codes = list(train['CO_PROVA_MT'].unique())
+    # add threshold to not overfragment the dataset
+    codes = [i for i in train.CO_PROVA_MT.unique() if len(train.loc[train.CO_PROVA_MT == i]) > 200]
 
     prev_answers_train = pd.DataFrame(list(map(lambda x: list(x), train.TX_RESPOSTAS_MT.str[:-5]))).set_index(train.index)
     prev_answers_test = pd.DataFrame(list(map(lambda x: list(x), test.TX_RESPOSTAS_MT))).set_index(test.index)
@@ -132,14 +179,14 @@ def create_groups(train, test):
     prev_answers_test['code'] = test['CO_PROVA_MT']
 
     prev_answers = pd.concat([prev_answers_train, prev_answers_test])
-    prev_answers['group'] = ''
+    prev_answers['group'] = 0
 
     label_encod = LabelEncoder()
     label_encod.fit(['A', 'B', 'C', 'D', 'E', '*'])
     prev_answers_enc = prev_answers.copy()
     prev_answers_enc.iloc[:, :-2] = prev_answers_enc.iloc[:, :-2].apply(label_encod.transform)
 
-    k_clusters = 6
+    k_clusters = 10
 
     for code in codes:
         X = prev_answers_enc.loc[prev_answers.code == code].iloc[:, :-2].values

@@ -1,7 +1,18 @@
 import pandas as pd
 
 def predict_answers(train, test, predict_n=5):
+    '''
+    Predict answers for the dataset using a mode strategy for each answer
 
+    Parameters
+    ----------
+        train: pandas DataFrame
+            Dataset containing the math answers in the 'TX_RESPOSTAS_MT' field
+        test: pandas DataFrame
+            Dataset to estimate the filled answers
+        predict_n: int, default 5
+            Number of answers to predict
+    '''
     train = train.copy()
     test = test.copy()
     filter_df = lambda df, code, quartile: df.loc[(df['CO_PROVA_MT'] == code) & (df['MT_QT'] == quartile)].index

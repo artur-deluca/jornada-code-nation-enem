@@ -27,13 +27,12 @@ class Markov:
         self.target = target
         self.__path = Path(__file__).resolve().parents[2]
 
-    def __store(self, elements, i=0):
+    def __store(self, elements, forward, i=0):
         # creates the keys based on the order of the Markov Chain
-        length = len(elements)
-        key = tuple(elements[i-length:self.order+i-length])
+        key = tuple(elements[-self.order-self.streak+i:-self.streak+i])
         try:
             # select elements to predict based on the order, the position of the iterator and the streak
-            to_add = elements[self.order+i-length:self.order+i+self.streak-length]
+            to_add = elements[-self.streak+i:len(elements)+forward]
             # in case the variable is empty the addition is ignored
             if to_add != '':
                 # check if key already exists and if not it adds to the dict
@@ -45,6 +44,19 @@ class Markov:
             pass
 
     def __train(self, elements):
+        if self.sequential:
+            # iterate through elements
+            for i in range(self.streak-1):
+                forward = -len(elements) -self.streak +i +1
+                self.__store(elements, forward, i)
+            i = self.streak-1
+            forward = 0
+            self.__store(elements, forward, i)
+        else:
+            forward = 0
+            self.__store(elements, forward)
+
+    def train_chain(self, df, sequential=False, save=True):
         '''
         Train the markov model
 
@@ -52,18 +64,12 @@ class Markov:
         ----------
         elements: str
             String of elements to feed into the Markov chain
-        multiple: bool, default True
-            If True, it iterate through the entire sequence to train the Markov chain. If False only trains the chain using the last elements.
+        sequential: bool, default False
+            If True, it iterate through the elements progressevely, predicting an element one by one afterwards on 'predict'
+        save: bool, default True
+            Store trained model in a pickle
         '''
-        if self.multiple:
-            # iterate through elements
-            for i in range(len(elements)):
-                self.__store(elements, i)
-        else:
-            self.__store(elements)
-
-    def train_chain(self, df, multiple=False, save=True):
-        self.multiple = multiple
+        self.sequential = sequential
         for index, element in df[self.target].iteritems():
             self.__key = tuple(df.loc[index, self.id])
             if self.__key not in self.model.keys():
@@ -72,7 +78,7 @@ class Markov:
         # save model in a pickle
         pkl.dump(self, open(os.path.join(self.__path, 'models\\trained_models\\markov.pkl'), 'wb'))
 
-    def predict(self, elements):
+    def predict(self, elements, key):
         '''
         Predicts the next element(s) of the sequence based on the input
 
@@ -80,20 +86,24 @@ class Markov:
         ----------
         elements: str
             String of elements to feed into the Markov chain
+        key: tuple
+            Elements used to reference the segment of the model used
         '''
+
         input_elements = elements[-self.order:]
-        flat_list = [item for sublist in list(self.model[self.__key].values()) for item in sublist]
-        if self.multiple:
+        flat_list = [item for sublist in list(self.model[key].values()) for item in sublist]
+        if self.sequential:
             answer = ""
             for i in range(self.streak):
                 try:
-                    answer += np.random.choice(self.model[self.__key][tuple(input_elements)])
+                    flat_list = [item for sublist in list(self.model[key].values()) for item in sublist]
+                    answer += np.random.choice(self.model[key][tuple(input_elements)])
                 except KeyError:
-                    answer += np.random.choice(list(map(lambda x: x[i], flat_list)))
+                    answer += np.random.choice(list(map(lambda x: x[0], flat_list)))
                 input_elements = input_elements[-self.order+1:] + answer[-1]
         else:
             try:
-                answer = np.random.choice(self.model[self.__key][tuple(input_elements)])
+                answer = np.random.choice(self.model[key][tuple(input_elements)])
             except KeyError:
                 answer = ""
                 for i in range(self.streak):
@@ -102,6 +112,9 @@ class Markov:
         return answer
 
     def load_model(self):
+        '''
+        Loads model from a pickle file
+        '''
         with open(os.path.join(self.__path, 'models/trained_models/markov.pkl'), "rb") as f:
             model = pkl.load(f)
         self.__dict__ = model.__dict__.copy()
@@ -111,66 +124,44 @@ if __name__ == '__main__':
     # path to general folder of the project
     path = Path(__file__).resolve().parents[2]
 
-    # set the order of the markov chain
-    order = 3
-    # set the number of predictions for each row of the datasets
-    n_predictions = 5
-
-    shift = n_predictions + order
-
     # input data
     train = pd.read_csv(os.path.join(path, 'data/interim/train3.csv')).set_index('NU_INSCRICAO')
     test = pd.read_csv(os.path.join(path, 'data/interim/test3.csv')).set_index('NU_INSCRICAO')
     validation = pd.read_csv(os.path.join(path, 'data/interim/validation3.csv')).set_index('NU_INSCRICAO')
 
+    # set the order of the markov chain
+    order = 3
+    # set the number of predictions for each row of the datasets
+    streak = 5
+
+    target = 'TX_RESPOSTAS_MT'
+    id = ['CO_PROVA_MT', 'group']
     # open stored markov models
     try:
-        model = load_model()
+        model = Markov(order, streak, target, id)
+        model.load_model()
     # trains and saves the models if the models are not stored
     except FileNotFoundError:
-        __train_whole_chain(train)
-        # open stored markov models
-        model = load_model()
+        model = Markov(order, streak, target, id)
+        model.train_chain(train)
 
-    test_codes = train.CO_PROVA_MT.unique()
-    groups = train.group.unique()
-
-    filter_df = lambda df, code, group: df.loc[(df['CO_PROVA_MT'] == code) & (df['group'] == group)].index
-
-    # iterate through all the math test codes
-    for code in test_codes:
-        # iterate through the classified groups
-        for group in groups:
-            # merge all subsets to be predicted as one
-            train_validation_test_set = pd.concat([
-                train.loc[filter_df(train, code, group), 'TX_RESPOSTAS_MT'].str[-shift:-n_predictions],
-                validation.loc[filter_df(validation, code, group), 'TX_RESPOSTAS_MT'].str[-order:],
-                test.loc[filter_df(test, code, group), 'TX_RESPOSTAS_MT'].str[-order:]
-            ])
-            # generates key to access the desired model in markov dictionary
-            key = tuple([code, group])
-            for index, element in train_validation_test_set.iteritems():
-                # build answer from empty string
-                enem_answer = ''
-                try:
-                    enem_answer += model[key].predict(element)
-                except KeyError:
-                    # In case it tries to make an unseen prediction, the result will be the mode of each element
-                    for _ in range(n_predictions):
-                        enem_answer += train_set.loc[:, 'TX_RESPOSTAS_MT'].str[-n_predictions+len(enem_answer)].mode()[0]
-                # stores the answer
-                train_validation_test_set.loc[index] = enem_answer
-            # store the answers to each corresponding dataset
-            train.loc[filter_df(train, code, group), 'PREDICTION'] = train_validation_test_set.loc[filter_df(train, code, group)]
-            validation.loc[filter_df(validation, code, group), 'PREDICTION'] = train_validation_test_set.loc[filter_df(validation, code, group)]
-            test.loc[filter_df(test, code, group), 'PREDICTION'] = train_validation_test_set.loc[filter_df(test, code, group)]
+    predict = {
+        'train': lambda df, id, target: model.predict(df[target][-(order+streak):-streak], tuple(df.loc[id].values)),
+        'test': lambda df, id, target: model.predict(df[target][-order:], tuple(df.loc[id].values))
+    }
 
     # saves a separate set to submit
+    try:
+        test['PREDICTION'] = test.apply(predict['test'], id=id, target=target, axis=1)
+    except KeyError:
+        model = Markov(order, streak, target, id)
+        model.train_chain(train)
+        test['PREDICTION'] = test.apply(predict['test'], id=id, target=target, axis=1)
     answer = test.copy().loc[:, ['PREDICTION']]
     answer = answer.rename(index=str, columns={"PREDICTION": "TX_RESPOSTAS_MT"})
     answer.to_csv(os.path.join(path, 'models/prediction/markov/test3.csv'))
 
     # accuracy measures
     print('Naive approach accuracy: {:.2f}%'.format(naive_approach(train)*100))
-    print('Traning set accuracy: {:.2f}%'.format(score(train.TX_RESPOSTAS_MT.str[-n_predictions:], train.PREDICTION)*100))
-    print('Validation set accuracy: {:.2f}%'.format(score(validation.TX_RESPOSTAS_MT.str[-n_predictions:], validation.PREDICTION)*100))
+    print('Traning set accuracy: {:.2f}%'.format(score(train.TX_RESPOSTAS_MT.str[-streak:], train.apply(predict['train'], id=id, target=target, axis=1))*100))
+    print('Validation set accuracy: {:.2f}%'.format(score(validation.TX_RESPOSTAS_MT.str[-streak:], validation.apply(predict['train'], id=id, target=target, axis=1))*100))

@@ -8,7 +8,7 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
 PROFILE = default
 PROJECT_NAME = jornada-code-nation-enem
-PYTHON_INTERPRETER = python
+PYTHON_INTERPRETER = python3
 
 ifeq (,$(shell which conda))
 HAS_CONDA=False
@@ -19,21 +19,16 @@ endif
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
-## build Data
-
 
 ## Install Python Dependencies
 requirements: test_environment
 	pip install -U pip setuptools wheel
 	pip install -r requirements.txt
 
-## Make Dataset
-data: requirements
-	$(PYTHON_INTERPRETER) src/data/make_dataset.py
-
+## Build features
 features:
-	$(PYTHON_INTERPRETER) src/features/build_data_challenge_2.py
-	$(PYTHON_INTERPRETER) src/features/build_data_challenge_3.py
+		$(PYTHON_INTERPRETER) src/features/build_c2.py
+		$(PYTHON_INTERPRETER) src/features/build_c3.py
 
 ## Delete all compiled Python files
 clean:
@@ -43,22 +38,6 @@ clean:
 ## Lint using flake8
 lint:
 	flake8 src
-
-## Upload Data to S3
-sync_data_to_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync data/ s3://$(BUCKET)/data/
-else
-	aws s3 sync data/ s3://$(BUCKET)/data/ --profile $(PROFILE)
-endif
-
-## Download Data from S3
-sync_data_from_s3:
-ifeq (default,$(PROFILE))
-	aws s3 sync s3://$(BUCKET)/data/ data/
-else
-	aws s3 sync s3://$(BUCKET)/data/ data/ --profile $(PROFILE)
-endif
 
 ## Set up python interpreter environment
 create_environment:
@@ -81,6 +60,13 @@ endif
 ## Test python environment is setup correctly
 test_environment:
 	$(PYTHON_INTERPRETER) test_environment.py
+
+## Test models' performance of Code:Nation's challenge 2
+chal_2:
+	@echo "$$(tput bold)Running Code:Nation's challenge 2:$$(tput sgr0)"
+	$(PYTHON_INTERPRETER) src/models/regression.py
+
+
 
 #################################################################################
 # PROJECT RULES                                                                 #

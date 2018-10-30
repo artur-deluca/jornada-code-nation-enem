@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from pathlib import Path
-from src.features.preprocess import clean_dataset, transform_dataset, one_hot_dataset
+from src.features.build_features import clean_dataset, transform_dataset, one_hot_dataset
 
 if __name__ == '__main__':
     data = os.path.join(Path(__file__).resolve().parents[2], "data")
