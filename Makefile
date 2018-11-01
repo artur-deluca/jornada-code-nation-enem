@@ -22,8 +22,8 @@ endif
 
 ## Install Python Dependencies
 requirements: test_environment
-	pip install -U pip setuptools wheel
-	pip install -r requirements.txt
+	pip install -U --user pip setuptools wheel
+	pip install -r --user requirements.txt
 
 ## Build features
 features:
@@ -50,7 +50,7 @@ else
 endif
 		@echo ">>> New conda env created. Activate with:\nsource activate $(PROJECT_NAME)"
 else
-	@pip install -q virtualenv virtualenvwrapper
+	@pip install -q --user virtualenv virtualenvwrapper
 	@echo ">>> Installing virtualenvwrapper if not already intalled.\nMake sure the following lines are in shell startup file\n\
 	export WORKON_HOME=$$HOME/.virtualenvs\nexport PROJECT_HOME=$$HOME/Devel\nsource /usr/local/bin/virtualenvwrapper.sh\n"
 	@bash -c "source `which virtualenvwrapper.sh`;mkvirtualenv $(PROJECT_NAME) --python=$(PYTHON_INTERPRETER)"
